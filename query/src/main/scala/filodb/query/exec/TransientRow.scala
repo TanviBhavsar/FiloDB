@@ -5,11 +5,8 @@ import filodb.memory.format.{RowReader, ZeroCopyUTF8String}
 
 trait MutableRowReader extends RowReader {
   def setLong(columnNo: Int, value: Long): Unit
-
   def setDouble(columnNo: Int, value: Double): Unit
-
   def setString(columnNo: Int, value: ZeroCopyUTF8String): Unit
-
   def setBlob(columnNo: Int, base: Array[Byte], offset: Int, length: Int): Unit
 }
 
@@ -44,25 +41,16 @@ final class TransientRow(var timestamp: Long, var value: Double) extends Mutable
   }
 
   def notNull(columnNo: Int): Boolean = columnNo < 2
-
   def getBoolean(columnNo: Int): Boolean = throw new IllegalArgumentException()
-
   def getInt(columnNo: Int): Int = throw new IllegalArgumentException()
-
   def getLong(columnNo: Int): Long = if (columnNo == 0) timestamp else throw new IllegalArgumentException()
-
   def getDouble(columnNo: Int): Double = if (columnNo == 1) value else throw new IllegalArgumentException()
-
   def getFloat(columnNo: Int): Float = throw new IllegalArgumentException()
-
   def getString(columnNo: Int): String = throw new IllegalArgumentException()
-
   def getAny(columnNo: Int): Any = throw new IllegalArgumentException()
 
   def getBlobBase(columnNo: Int): Any = throw new IllegalArgumentException()
-
   def getBlobOffset(columnNo: Int): Long = throw new IllegalArgumentException()
-
   def getBlobNumBytes(columnNo: Int): Int = throw new IllegalArgumentException()
 
   override def toString: String = s"TransientRow(t=$timestamp, v=$value)"
@@ -71,45 +59,33 @@ final class TransientRow(var timestamp: Long, var value: Double) extends Mutable
 final class AvgAggTransientRow extends MutableRowReader {
   var timestamp: Long = _
   var avg: Double = _
-  var count: Double = _
+  var count: Long = _
 
   def setLong(columnNo: Int, valu: Long): Unit =
     if (columnNo == 0) timestamp = valu
-
+    else if (columnNo == 2) count = valu
     else throw new IllegalArgumentException()
 
   def setDouble(columnNo: Int, valu: Double): Unit =
     if (columnNo == 1) avg = valu
-    else if (columnNo == 2) count = valu
     else throw new IllegalArgumentException()
 
   def setString(columnNo: Int, value: ZeroCopyUTF8String): Unit = throw new IllegalArgumentException()
-
   def setBlob(columnNo: Int, base: Array[Byte], offset: Int, length: Int): Unit = throw new IllegalArgumentException()
 
   def notNull(columnNo: Int): Boolean = columnNo < 3
-
   def getBoolean(columnNo: Int): Boolean = throw new IllegalArgumentException()
-
   def getInt(columnNo: Int): Int = throw new IllegalArgumentException()
-
   def getLong(columnNo: Int): Long = if (columnNo == 0) timestamp
-  else throw new IllegalArgumentException()
-
-  def getDouble(columnNo: Int): Double = if (columnNo == 1) avg
   else if (columnNo == 2) count
   else throw new IllegalArgumentException()
-
+  def getDouble(columnNo: Int): Double = if (columnNo == 1) avg
+  else throw new IllegalArgumentException()
   def getFloat(columnNo: Int): Float = throw new IllegalArgumentException()
-
   def getString(columnNo: Int): String = throw new IllegalArgumentException()
-
   def getAny(columnNo: Int): Any = throw new IllegalArgumentException()
-
   def getBlobBase(columnNo: Int): Any = throw new IllegalArgumentException()
-
   def getBlobOffset(columnNo: Int): Long = throw new IllegalArgumentException()
-
   def getBlobNumBytes(columnNo: Int): Int = throw new IllegalArgumentException()
 }
 
@@ -132,31 +108,19 @@ final class QuantileAggTransientRow() extends MutableRowReader {
     else throw new IllegalArgumentException()
 
   def setDouble(columnNo: Int, value: Double): Unit = ???
-
   def setString(columnNo: Int, value: ZeroCopyUTF8String): Unit = ???
-
   def notNull(columnNo: Int): Boolean = ???
-
   def getBoolean(columnNo: Int): Boolean = ???
-
   def getInt(columnNo: Int): Int = ???
-
   def getLong(columnNo: Int): Long = if (columnNo == 0) timestamp else throw new IllegalArgumentException()
-
   def getDouble(columnNo: Int): Double = ???
-
   def getFloat(columnNo: Int): Float = ???
-
   def getString(columnNo: Int): String = ???
-
   def getAny(columnNo: Int): Any = ???
-
-  def getBlobBase(columnNo: Int): Any = if (columnNo == 1) blobBase
+  def getBlobBase(columnNo: Int): Any =     if (columnNo == 1) blobBase
   else throw new IllegalArgumentException()
-
-  def getBlobOffset(columnNo: Int): Long = if (columnNo == 1) blobOffset
+  def getBlobOffset(columnNo: Int): Long =  if (columnNo == 1) blobOffset
   else throw new IllegalArgumentException()
-
   def getBlobNumBytes(columnNo: Int): Int = if (columnNo == 1) blobLength
   else throw new IllegalArgumentException()
 
@@ -177,36 +141,26 @@ final class TopBottomKAggTransientRow(val k: Int) extends MutableRowReader {
     else throw new IllegalArgumentException()
 
   def setDouble(columnNo: Int, valu: Double): Unit =
-    values((columnNo - 1) / 2) = valu
+    values((columnNo-1)/2) = valu
 
   def setString(columnNo: Int, valu: ZeroCopyUTF8String): Unit =
-    partKeys((columnNo - 1) / 2) = valu
+    partKeys((columnNo-1)/2) = valu
 
   def setBlob(columnNo: Int, base: Array[Byte], offset: Int, length: Int): Unit = throw new IllegalArgumentException()
 
-  def notNull(columnNo: Int): Boolean = columnNo < 2 * k + 1
-
+  def notNull(columnNo: Int): Boolean = columnNo < 2*k + 1
   def getBoolean(columnNo: Int): Boolean = throw new IllegalArgumentException()
-
   def getInt(columnNo: Int): Int = throw new IllegalArgumentException()
-
   def getLong(columnNo: Int): Long = if (columnNo == 0) timestamp else throw new IllegalArgumentException()
-
-  def getDouble(columnNo: Int): Double = values((columnNo - 1) / 2)
-
+  def getDouble(columnNo: Int): Double = values((columnNo-1)/2)
   def getFloat(columnNo: Int): Float = throw new IllegalArgumentException()
-
-  def getString(columnNo: Int): String = partKeys((columnNo - 1) / 2).toString
-
+  def getString(columnNo: Int): String = partKeys((columnNo-1)/2).toString
   def getAny(columnNo: Int): Any = {
     if (columnNo == 0) timestamp
-    else if (columnNo % 2 == 1) partKeys((columnNo - 1) / 2)
-    else values((columnNo - 1) / 2)
+    else if (columnNo % 2 == 1) partKeys((columnNo-1)/2)
+    else values((columnNo-1)/2)
   }
-
   def getBlobBase(columnNo: Int): Any = throw new IllegalArgumentException()
-
   def getBlobOffset(columnNo: Int): Long = throw new IllegalArgumentException()
-
   def getBlobNumBytes(columnNo: Int): Int = throw new IllegalArgumentException()
 }
