@@ -479,7 +479,8 @@ object CountRowAggregator extends RowAggregator {
   */
 object AvgRowAggregator extends RowAggregator {
 
-  class AvgHolder(var timestamp: Long = 0L, var mean: Double = 0, var count: Double = Double.NaN) extends AggregateHolder {
+  class AvgHolder(var timestamp: Long = 0L, var mean: Double = Double.NaN, var count: Double = Double.NaN)
+    extends AggregateHolder {
     val row = new AvgAggTransientRow()
 
     def toRowReader: MutableRowReader = {
@@ -504,15 +505,17 @@ object AvgRowAggregator extends RowAggregator {
   def map(rvk: RangeVectorKey, item: RowReader, mapInto: MutableRowReader): RowReader = {
     mapInto.setLong(0, item.getLong(0))
     mapInto.setDouble(1, item.getDouble(1))
-    mapInto.setDouble(2, if (item.getDouble(1).isNaN) 0L else 1L)
+    mapInto.setDouble(2, if (item.getDouble(1).isNaN) 0d else 1d)
     mapInto
   }
 
   def reduceAggregate(acc: AvgHolder, aggRes: RowReader): AvgHolder = {
     acc.timestamp = aggRes.getLong(0)
-    if (aggRes.getDouble(2) > 0) {
-      if (acc.mean.isNaN) acc.mean = 0
-      val newMean = (acc.mean * acc.count + aggRes.getDouble(1) * aggRes.getDouble(2)) / (acc.count + aggRes.getDouble(2))
+    if (!aggRes.getDouble(1).isNaN) {
+      if (acc.mean.isNaN) acc.mean = 0d
+      if (acc.count.isNaN) acc.count = 0d
+      val newMean = (acc.mean * acc.count + aggRes.getDouble(1) * aggRes.getDouble(2)) /
+        (acc.count + aggRes.getDouble(2))
       acc.mean = newMean
       acc.count += aggRes.getDouble(2)
     }
@@ -523,7 +526,7 @@ object AvgRowAggregator extends RowAggregator {
   def present(aggRangeVector: RangeVector, limit: Int): Seq[RangeVector] = Seq(aggRangeVector)
 
   def reductionSchema(source: ResultSchema): ResultSchema = {
-    source.copy(columns = source.columns :+ ColumnInfo("count", ColumnType.LongColumn))
+    source.copy(columns = source.columns :+ ColumnInfo("count", ColumnType.DoubleColumn))
   }
 
   def presentationSchema(reductionSchema: ResultSchema): ResultSchema = {
