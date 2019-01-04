@@ -469,7 +469,7 @@ object AvgRowAggregator extends RowAggregator {
   */
 class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
 
-  private val numRowReaderColumns = 1 + k*2 // one for timestamp, two columns for each top-k
+  private val numRowReaderColumns = 2 + k*2 // one for timestamp, one for no of values two columns for each top-k
   private val rvkStringCache = mutable.HashMap[RangeVectorKey, ZeroCopyUTF8String]()
 
   case class RVKeyAndValue(rvk: ZeroCopyUTF8String, value: Double)
@@ -488,6 +488,7 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
         row.setDouble(i + 1, el.value)
         i += 2
       }
+      row.setLong(1,(i-1)/2)
       row
     }
     def resetToZero(): Unit = { heap.clear() }
@@ -499,21 +500,16 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
   def map(rvk: RangeVectorKey, item: RowReader, mapInto: MutableRowReader): RowReader = {
     val rvkString = rvkStringCache.getOrElseUpdate(rvk, CustomRangeVectorKey.toZcUtf8(rvk))
     mapInto.setLong(0, item.getLong(0))
+    mapInto.setLong(1, 1)
     // TODO: Use setBlob instead of setString once RowReeder has the support for blob
     mapInto.setString(1, rvkString)
     mapInto.setDouble(2, item.getDouble(1))
-    var i = 3
-    while(i<numRowReaderColumns) {
-      mapInto.setString(i, CustomRangeVectorKey.emptyAsZcUtf8)
-      mapInto.setDouble(i + 1, if (bottomK) Double.MaxValue else Double.MinValue)
-      i += 2
-    }
     mapInto
   }
 
   def reduceAggregate(acc: TopKHolder, aggRes: RowReader): TopKHolder = {
     acc.timestamp = aggRes.getLong(0)
-    var i = 1
+    var i = 2
     while(aggRes.notNull(i)) {
       if (!aggRes.getDouble(i + 1).isNaN) {
         acc.heap.enqueue(RVKeyAndValue(aggRes.filoUTF8String(i), aggRes.getDouble(i + 1)))
@@ -534,7 +530,7 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
       OffheapLFSortedIDMap.validateNoSharedLocks()
       // We limit the results wherever it is materialized first. So it is done here.
       aggRangeVector.rows.take(limit).foreach { row =>
-        var i = 1
+        var i = 2
         while(row.notNull(i)) {
           val rvk = CustomRangeVectorKey.fromZcUtf8(row.filoUTF8String(i))
           val builder = resRvs.getOrElseUpdate(rvk, SerializableRangeVector.toBuilder(recSchema))
@@ -557,10 +553,11 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
   def reductionSchema(source: ResultSchema): ResultSchema = {
     val cols = new Array[ColumnInfo](numRowReaderColumns)
     cols(0) = source.columns(0)
-    var i = 1
+    cols(1) = ColumnInfo("noOfValues",ColumnType.LongColumn)
+    var i = 2
     while(i < numRowReaderColumns) {
-      cols(i) = ColumnInfo(s"top${(i + 1)/2}-Key", ColumnType.StringColumn)
-      cols(i + 1) = ColumnInfo(s"top${(i + 1)/2}-Val", ColumnType.DoubleColumn)
+      cols(i) = ColumnInfo(s"top${(i + 2)/2}-Key", ColumnType.StringColumn)
+      cols(i + 1) = ColumnInfo(s"top${(i + 2)/2}-Val", ColumnType.DoubleColumn)
       i += 2
     }
     ResultSchema(cols, 1)

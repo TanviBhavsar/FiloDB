@@ -133,32 +133,40 @@ final class QuantileAggTransientRow() extends MutableRowReader {
 
 final class TopBottomKAggTransientRow(val k: Int) extends MutableRowReader {
   var timestamp: Long = _
+  var noOfValues: Long = _
   val partKeys: Array[ZeroCopyUTF8String] = new Array[ZeroCopyUTF8String](k)
   val values: Array[Double] = new Array[Double](k)
 
   def setLong(columnNo: Int, valu: Long): Unit =
     if (columnNo == 0) timestamp = valu
+    else if (columnNo == 1) noOfValues = valu
     else throw new IllegalArgumentException()
 
   def setDouble(columnNo: Int, valu: Double): Unit =
-    values((columnNo-1)/2) = valu
+    values((columnNo-2)/2) = valu
 
   def setString(columnNo: Int, valu: ZeroCopyUTF8String): Unit =
-    partKeys((columnNo-1)/2) = valu
+    partKeys((columnNo-2)/2) = valu
 
   def setBlob(columnNo: Int, base: Array[Byte], offset: Int, length: Int): Unit = throw new IllegalArgumentException()
 
-  def notNull(columnNo: Int): Boolean = columnNo < 2*k + 1
+  def notNull(columnNo: Int): Boolean = columnNo < 2*noOfValues + 2
   def getBoolean(columnNo: Int): Boolean = throw new IllegalArgumentException()
   def getInt(columnNo: Int): Int = throw new IllegalArgumentException()
-  def getLong(columnNo: Int): Long = if (columnNo == 0) timestamp else throw new IllegalArgumentException()
-  def getDouble(columnNo: Int): Double = values((columnNo-1)/2)
-  def getFloat(columnNo: Int): Float = throw new IllegalArgumentException()
-  def getString(columnNo: Int): String = partKeys((columnNo-1)/2).toString
-  def getAny(columnNo: Int): Any = {
+
+  def getLong(columnNo: Int): Long =
     if (columnNo == 0) timestamp
-    else if (columnNo % 2 == 1) partKeys((columnNo-1)/2)
-    else values((columnNo-1)/2)
+    else if (columnNo == 1) noOfValues
+    else throw new IllegalArgumentException()
+  def getDouble(columnNo: Int): Double = values((columnNo-2)/2)
+  def getFloat(columnNo: Int): Float = throw new IllegalArgumentException()
+  def getString(columnNo: Int): String = partKeys((columnNo-2)/2).toString
+  def getAny(columnNo: Int): Any = {
+
+    if (columnNo == 0) timestamp
+    else if (columnNo == 1) noOfValues
+    else if (columnNo % 2 == 0) partKeys((columnNo-2)/2)
+    else values((columnNo-2)/2)
   }
   def getBlobBase(columnNo: Int): Any = throw new IllegalArgumentException()
   def getBlobOffset(columnNo: Int): Long = throw new IllegalArgumentException()
