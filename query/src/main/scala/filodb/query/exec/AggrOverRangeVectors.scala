@@ -502,8 +502,8 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
     mapInto.setLong(0, item.getLong(0))
     mapInto.setLong(1, 1)
     // TODO: Use setBlob instead of setString once RowReeder has the support for blob
-    mapInto.setString(1, rvkString)
-    mapInto.setDouble(2, item.getDouble(1))
+    mapInto.setString(2, rvkString)
+    mapInto.setDouble(3, item.getDouble(1))
     mapInto
   }
 
