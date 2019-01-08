@@ -310,6 +310,17 @@ class AggrOverRangeVectorsSpec extends FunSpec with Matchers with ScalaFutures {
     result4(0).key shouldEqual noKey
     compareIter(result4(0).rows.map(_.getDouble(1)), Seq(Double.NaN, 5.133333333333333d).iterator)
 
+    // TopK
+    val resultObs6a = RangeVectorAggregator.mapReduce(AggregationOperator.TopK,
+      Seq(2.0), false, Observable.fromIterable(samples), noGrouping)
+    val resultObs6 = RangeVectorAggregator.mapReduce(AggregationOperator.TopK,
+      Seq(2.0), true, resultObs6a, rv=>rv.key)
+    val result6 = resultObs6.toListL.runAsync.futureValue
+    result6.size shouldEqual 1
+    result6(0).key shouldEqual noKey
+    compareIter2(result6(0).rows.map(r=> Set(r.getDouble(2), r.getDouble(4))),
+      Seq(Set(0.0d,0.0d), Set(5.1, 5.4d)).iterator)
+
   }
 
   @tailrec

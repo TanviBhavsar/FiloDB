@@ -15,6 +15,7 @@ import filodb.memory.data.OffheapLFSortedIDMap
 import filodb.memory.format.{RowReader, UnsafeUtils, ZeroCopyUTF8String}
 import filodb.query._
 import filodb.query.AggregationOperator._
+//import filodb.query.Query.qLogger
 
 /**
   * Reduce combined aggregates from children. Can be applied in a
@@ -510,11 +511,13 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
   def reduceAggregate(acc: TopKHolder, aggRes: RowReader): TopKHolder = {
     acc.timestamp = aggRes.getLong(0)
     var i = 2
-    while(aggRes.notNull(i)) {
-      if (!aggRes.getDouble(i + 1).isNaN) {
+    while(aggRes.notNull(i)&& aggRes.getLong(1) > 0) {
+       if (!aggRes.getDouble(i + 1).isNaN) {
         acc.heap.enqueue(RVKeyAndValue(aggRes.filoUTF8String(i), aggRes.getDouble(i + 1)))
         if (acc.heap.size > k) acc.heap.dequeue()
       }
+      //else
+        // aggRes.asInstanceOf[TopBottomKAggTransientRow].setLong(i)=0;
       i += 2
     }
     acc
@@ -531,7 +534,7 @@ class TopBottomKRowAggregator(k: Int, bottomK: Boolean) extends RowAggregator {
       // We limit the results wherever it is materialized first. So it is done here.
       aggRangeVector.rows.take(limit).foreach { row =>
         var i = 2
-        while(row.notNull(i)) {
+        while(row.notNull(i) && row.getLong(1) > 0) {
           val rvk = CustomRangeVectorKey.fromZcUtf8(row.filoUTF8String(i))
           val builder = resRvs.getOrElseUpdate(rvk, SerializableRangeVector.toBuilder(recSchema))
           builder.startNewRecord()
