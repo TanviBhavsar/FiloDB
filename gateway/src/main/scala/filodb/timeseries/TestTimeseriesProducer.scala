@@ -97,12 +97,12 @@ object TestTimeseriesProducer extends StrictLogging {
       val endQuery = startQuery + 300
       val query =
         s"""./filo-cli '-Dakka.remote.netty.tcp.hostname=127.0.0.1' --host 127.0.0.1 --dataset prometheus """ +
-        s"""--promql 'heap_usage{dc="DC0",app="App-0"}' --start $startQuery --end $endQuery --limit 15"""
+        s"""--promql 'heap_usage{dc="DC0",_ns="App-0"}' --start $startQuery --end $endQuery --limit 15"""
       logger.info(s"Sample Query you can use: \n$query")
-      val q = URLEncoder.encode("heap_usage{dc=\"DC0\",app=\"App-0\"}", StandardCharsets.UTF_8.toString)
+      val q = URLEncoder.encode("heap_usage{dc=\"DC0\",_ns=\"App-0\"}", StandardCharsets.UTF_8.toString)
       val url = s"http://localhost:8080/promql/prometheus/api/v1/query_range?" +
         s"query=$q&start=$startQuery&end=$endQuery&step=15"
-      logger.info(s"Sample URL you can use to query: \n$url")
+      logger.info(s" test Sample URL you can use to query: \n$url")
     }
   }
 

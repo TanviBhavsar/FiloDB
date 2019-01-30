@@ -328,6 +328,8 @@ extends ChunkInfoIterator {
    */
   final def hasMoreWindows: Boolean = (curWindowEnd < 0) || (curWindowEnd + step <= end)
 
+  //if( wi\)
+
   /**
    * Advances to the next window.
    */
@@ -336,14 +338,15 @@ extends ChunkInfoIterator {
     if (curWindowEnd == -1L) {
       curWindowEnd = start
       curWindowStart = start - Math.max(window - 1, 0)  // window cannot be below 0, ie start should never be > end
+      //curWindowStart = start - Math.max(window , 0)
     } else {
       curWindowEnd += step
       curWindowStart += step
     }
     readIndex = 0
-
+   val tmp=ChunkSetInfo(windowInfos(0))
     // drop initial chunksets of window that are no longer part of the window
-    while (windowInfos.nonEmpty && ChunkSetInfo(windowInfos(0)).endTime < curWindowStart) {
+    while (windowInfos.nonEmpty && ChunkSetInfo(windowInfos(0)).endTime < curWindowStart ) {
       windowInfos.remove(0)
     }
 

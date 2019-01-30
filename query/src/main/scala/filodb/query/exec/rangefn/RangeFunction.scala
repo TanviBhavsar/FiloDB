@@ -261,6 +261,8 @@ object LastSampleFunction extends RangeFunction {
             queryConfig: QueryConfig): Unit = {
     if (window.size > 1)
       throw new IllegalStateException(s"Window had more than 1 sample. Possible out of order samples. Window: $window")
+    val windowSize=window.size
+    val windowHead=window.head.getLong(0)
     if (window.size == 0 || (endTimestamp - window.head.getLong(0)) > queryConfig.staleSampleAfterMs) {
       sampleToEmit.setValues(endTimestamp, Double.NaN)
     } else {

@@ -301,4 +301,46 @@ class WindowIteratorSpec extends RawDataWindowingSpec {
                                                    .asInstanceOf[ChunkedRangeFunction], queryConfig)()
     chunkedWinIt.map(r => (r.getLong(0), r.getDouble(1))).toList.filter(!_._2.isNaN) shouldEqual windowResults
   }
+
+
+  it("test range function") {
+    val samples = Seq(
+      100000L -> 100d,
+      153000L -> 160d,
+      200000L -> 200d
+     // 200200L -> 220d
+
+    )
+    val windowResults = Seq(
+      1548191496000L -> 0.34,
+      1548191511000L -> 0.555,
+      1548191526000L -> 0.60375,
+      1548191541000L -> 0.668,
+      1548191556000L -> 1.0357142857142858
+    )
+    val rv = timeValueRV(samples)
+
+
+  /*  val slidingWinIterator = new SlidingWindowIterator(rv.rows, 100000L,
+      100000, 600000L, 0,
+      RangeFunction(None, ColumnType.DoubleColumn, useChunked = false),
+      queryConfig)
+
+
+    System.out.println("slidingWinIterator:")
+
+    slidingWinIterator.map(r => (r.getLong(0), r.getDouble(1))).toList.foreach(v =>
+      println("Time is :" + v._1 + " value:" + v._2))*/
+
+
+    val chunkedWinIt = new ChunkedWindowIterator(rv, 100000L,
+      100000, 600000L, queryConfig.staleSampleAfterMs,
+      RangeFunction(None, ColumnType.DoubleColumn, useChunked = true)
+        .asInstanceOf[ChunkedRangeFunction], queryConfig)()
+
+    System.out.println("chunkedWinIt:")
+
+    chunkedWinIt.map(r => (r.getLong(0), r.getDouble(1))).toList.foreach(v =>
+      println("Time is :" + v._1 + " value:" + v._2))
+  }
 }
