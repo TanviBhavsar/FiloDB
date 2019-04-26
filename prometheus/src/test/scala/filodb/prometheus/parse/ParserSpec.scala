@@ -335,7 +335,7 @@ class ParserSpec extends FunSpec with Matchers {
         "RawSeries(IntervalSelector(1524855688000,1524855988000),List(ColumnFilter(__name__,Equals(foo)), ColumnFilter(job,Equals(myjob))),List())",
       "sum({__name__=\"foo\",job=\"myjob\"})" ->
         "Aggregate(Sum,PeriodicSeries(RawSeries(IntervalSelector(1524855688000,1524855988000),List(ColumnFilter(__name__,Equals(foo)), ColumnFilter(job,Equals(myjob))),List()),1524855988000,1000000,1524855988000),List(),List(),List())",
-      "sum(http_requests_total)       \n \n / \n\n    sum(http_requests_total)" ->
+      "sum(sum_over_time(mesos_master_disk{_ns=\"mesos_master\",type=\"used\"}[5m])) by (cluster) / sum(sum_over_time(mesos_master_disk{_ns=\"mesos_master\",type=\"total\"}[5m])) by (cluster)" ->
         "BinaryJoin(Aggregate(Sum,PeriodicSeries(RawSeries(IntervalSelector(1524855688000,1524855988000),List(ColumnFilter(__name__,Equals(http_requests_total))),List()),1524855988000,1000000,1524855988000),List(),List(),List()),DIV,OneToOne,Aggregate(Sum,PeriodicSeries(RawSeries(IntervalSelector(1524855688000,1524855988000),List(ColumnFilter(__name__,Equals(http_requests_total))),List()),1524855988000,1000000,1524855988000),List(),List(),List()),List(),List())"
     )
 
