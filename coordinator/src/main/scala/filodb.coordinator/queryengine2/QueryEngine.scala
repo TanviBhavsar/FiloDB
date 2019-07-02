@@ -61,6 +61,19 @@ class QueryEngine(dataset: Dataset,
                   options: QueryOptions, spreadProvider: SpreadProvider = StaticSpreadProvider()): ExecPlan = {
     val queryId = UUID.randomUUID().toString
 
+    /*
+     have input parameter podfunction tell whether query namespace is in local or remote dc , healthfunction time where dc was down
+
+    startume = lp.getstarttime
+    endtime= lp.getendtime
+
+    logivalplan1 = 10 - 12
+    logicalplan2 = 12 - 14
+    prodroutinglogicalplan(seq[logicalplan])
+    prodroutinglogicalplan whould have prodroutingexecplan will have dispather for pod
+  prodroutinglogicalplan would have top level stichedexecplan
+     */
+
     val materialized = walkLogicalPlanTree(rootLogicalPlan, queryId, System.currentTimeMillis(),
       options, spreadProvider)
     match {
@@ -133,7 +146,7 @@ class QueryEngine(dataset: Dataset,
                                   submitTime: Long,
                                   options: QueryOptions, spreadProvider: SpreadProvider): PlanResult = {
 
-    logicalPlan match {
+    val result = logicalPlan match {
       case lp: RawSeries                   => materializeRawSeries(queryId, submitTime, options, lp, spreadProvider)
       case lp: RawChunkMeta                => materializeRawChunkMeta(queryId, submitTime, options, lp, spreadProvider)
       case lp: PeriodicSeries              => materializePeriodicSeries(queryId, submitTime, options, lp,
@@ -152,6 +165,9 @@ class QueryEngine(dataset: Dataset,
       case lp: ApplyMiscellaneousFunction  => materializeApplyMiscellaneousFunction(queryId, submitTime, options, lp,
                                               spreadProvider)
     }
+    println("result:" + result)
+    result
+
   }
 
   private def materializeScalarVectorBinOp(queryId: String,

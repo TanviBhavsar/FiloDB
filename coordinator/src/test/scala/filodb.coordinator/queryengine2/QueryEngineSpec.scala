@@ -45,6 +45,7 @@ class QueryEngineSpec extends FunSpec with Matchers {
   val intervalSelector = IntervalSelector(from, to)
 
   val raw1 = RawSeries(rangeSelector = intervalSelector, filters= f1, columns = Seq("value"))
+  val periodicSeries = PeriodicSeries(raw1, 1000, 200, 5000)
   val windowed1 = PeriodicSeriesWithWindowing(raw1, from, 1000, to, 5000, RangeFunctionId.Rate)
   val summed1 = Aggregate(AggregationOperator.Sum, windowed1, Nil, Seq("job"))
 
@@ -206,4 +207,13 @@ class QueryEngineSpec extends FunSpec with Matchers {
     binaryJoinNode.children.foreach(_.isInstanceOf[StitchRvsExec] should not equal true)
   }
 
+  it ("should generate ExecPlan for Periodicseries") {
+    // final logical plan
+    //val logicalPlan = BinaryJoin(summed1, BinaryOperator.DIV, Cardinality.OneToOne, summed2)
+    val lp = Parser.queryRangeToLogicalPlan("""foo{job="bar"}""",
+      TimeStepParams(20000, 100, 30000))
+    val execPlan = engine.materialize(lp, QueryOptions())
+    execPlan.printTree()
+    // materialized exec plan
+  }
 }

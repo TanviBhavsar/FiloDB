@@ -20,6 +20,8 @@ trait PlanDispatcher extends java.io.Serializable {
                timeout: FiniteDuration): Task[QueryResponse]
 }
 
+// Extend PlanDispatcher to create clall for remotedispatching it will result of QueryResponse. StitchedPlan will merge local and remote results
+
 /**
   * This implementation provides a way to distribute query execution
   * using Akka Actors.
