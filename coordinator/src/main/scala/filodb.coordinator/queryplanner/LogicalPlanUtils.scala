@@ -1,5 +1,6 @@
 package filodb.coordinator.queryplanner
 
+import filodb.core.query.ColumnFilter
 import filodb.prometheus.ast.WindowConstants
 import filodb.query._
 
@@ -120,5 +121,16 @@ object LogicalPlanUtils {
       case lp: RawSeries => lp.lookbackMs.getOrElse(staleDataLookbackMillis)
       case _             => 0
     }
+  }
+
+  def getColumnFilters(logicalPlan: LogicalPlan): Seq[Seq[ColumnFilter]] = {
+    val filters = LogicalPlan.findLeafLogicalPlans(logicalPlan).map {
+      _
+      match {
+        case lp: RawSeries => lp.filters.sorted
+        case _ => throw new BadQueryException(s"Invalid logical plan $logicalPlan")
+      }
+    }
+    filters.sortWith((f1, f2) => f1.equals(f2))
   }
 }

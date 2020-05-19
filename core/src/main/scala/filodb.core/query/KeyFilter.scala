@@ -47,7 +47,12 @@ object Filter {
 
 }
 
-final case class ColumnFilter(column: String, filter: Filter)
+final case class ColumnFilter(column: String, filter: Filter) extends Ordered[ColumnFilter] {
+  def compare(that: ColumnFilter): Int = //this.column compare that.column
+  this.filter.valuesStrings.hashCode + this.column.hashCode compare that.filter.valuesStrings.hashCode +
+    that.column.hashCode
+
+}
 
 /**
  * Utilities to generate functions to filter keys.
