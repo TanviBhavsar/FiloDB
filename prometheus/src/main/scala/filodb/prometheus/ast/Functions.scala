@@ -97,7 +97,8 @@ trait Functions extends Base with Operators with Vectors {
       val scalarFunctionIdOpt = ScalarFunctionId.withNameInsensitiveOption(name)
       if (vectorFn.isDefined) {
         allParams.head match {
-          case num: ScalarExpression => val params = RangeParams(timeParams.start, timeParams.step, timeParams.end)
+          case num: ScalarExpression => val params = RangeParams(timeParams.startSecs, timeParams.stepSecs,
+                                        timeParams.endSecs)
                                         VectorPlan(ScalarFixedDoublePlan(num.toScalar, params))
           case function: Function    => val nestedPlan = function.toSeriesPlan(timeParams)
                                         nestedPlan match {
@@ -106,7 +107,8 @@ trait Functions extends Base with Operators with Vectors {
                                         }
         }
       } else if (allParams.isEmpty) {
-        ScalarTimeBasedPlan(scalarFunctionIdOpt.get, RangeParams(timeParams.start, timeParams.step, timeParams.end) )
+        ScalarTimeBasedPlan(scalarFunctionIdOpt.get, RangeParams(timeParams.startSecs, timeParams.stepSecs,
+          timeParams.endSecs) )
       } else {
         val seriesParam = allParams.filter(_.isInstanceOf[Series]).head.asInstanceOf[Series]
         val otherParams: Seq[FunctionArgsPlan] =
@@ -114,7 +116,7 @@ trait Functions extends Base with Operators with Vectors {
                    .filter(!_.isInstanceOf[InstantExpression])
                    .map {
                      case num: ScalarExpression =>
-                       val params = RangeParams(timeParams.start, timeParams.step, timeParams.end)
+                       val params = RangeParams(timeParams.startSecs, timeParams.stepSecs, timeParams.endSecs)
                        ScalarFixedDoublePlan(num.toScalar, params)
                      case function: Function if (function.name.equalsIgnoreCase("scalar")) =>
                        function.toSeriesPlan(timeParams).asInstanceOf[ScalarVaryingDoublePlan]
@@ -167,21 +169,21 @@ trait Functions extends Base with Operators with Vectors {
       } else if (absentFunctionIdOpt.isDefined) {
         val columnFilter = seriesParam.asInstanceOf[InstantExpression].columnFilters
         val periodicSeriesPlan = seriesParam.asInstanceOf[PeriodicSeries].toSeriesPlan(timeParams)
-        ApplyAbsentFunction(periodicSeriesPlan, columnFilter, RangeParams(timeParams.start, timeParams.step,
-          timeParams.end))
+        ApplyAbsentFunction(periodicSeriesPlan, columnFilter, RangeParams(timeParams.startSecs, timeParams.stepSecs,
+          timeParams.endSecs))
       } else {
         val rangeFunctionId = RangeFunctionId.withNameInsensitiveOption(name).get
         if (rangeFunctionId == Timestamp) {
           val instantExpression = seriesParam.asInstanceOf[InstantExpression]
 
           PeriodicSeriesWithWindowing(instantExpression.toRawSeriesPlan(timeParams),
-            timeParams.start * 1000, timeParams.step * 1000, timeParams.end * 1000, 0,
+            timeParams.startSecs * 1000, timeParams.stepSecs * 1000, timeParams.endSecs * 1000, 0,
             rangeFunctionId, otherParams, instantExpression.offset.map(_.millis))
         } else {
           val rangeExpression = seriesParam.asInstanceOf[RangeExpression]
           PeriodicSeriesWithWindowing(
             rangeExpression.toSeriesPlan(timeParams, isRoot = false),
-            timeParams.start * 1000 , timeParams.step * 1000, timeParams.end * 1000,
+            timeParams.startSecs * 1000 , timeParams.stepSecs * 1000, timeParams.endSecs * 1000,
             rangeExpression.window.millis,
             rangeFunctionId, otherParams, rangeExpression.offset.map(_.millis))
         }

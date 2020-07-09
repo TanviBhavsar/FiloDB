@@ -184,7 +184,7 @@ trait Vectors extends Scalars with TimeUnits with Base {
       val ps = PeriodicSeries(
         RawSeries(timeParamToSelector(timeParams), columnFilters, column.toSeq, Some(staleDataLookbackMillis),
           offset.map(_.millis)),
-        timeParams.start * 1000, timeParams.step * 1000, timeParams.end * 1000,
+        timeParams.startSecs * 1000, timeParams.stepSecs * 1000, timeParams.endSecs * 1000,
         offset.map(_.millis)
       )
       bucketOpt.map { bOpt =>
@@ -195,7 +195,8 @@ trait Vectors extends Scalars with TimeUnits with Base {
     }
 
     def toMetadataPlan(timeParams: TimeRangeParams, fetchFirstLastSampleTimes: Boolean): SeriesKeysByFilters = {
-      SeriesKeysByFilters(columnFilters, fetchFirstLastSampleTimes, timeParams.start * 1000, timeParams.end * 1000)
+      SeriesKeysByFilters(columnFilters, fetchFirstLastSampleTimes, timeParams.startSecs * 1000,
+        timeParams.endSecs * 1000)
     }
 
     def toRawSeriesPlan(timeParams: TimeRangeParams, offsetMs: Option[Long] = None): RawSeries = {
@@ -219,7 +220,7 @@ trait Vectors extends Scalars with TimeUnits with Base {
     private[prometheus] val (columnFilters, column, bucketOpt) = labelMatchesToFilters(mergeNameToLabels)
 
     def toSeriesPlan(timeParams: TimeRangeParams, isRoot: Boolean): RawSeriesLikePlan = {
-      if (isRoot && timeParams.start != timeParams.end) {
+      if (isRoot && timeParams.startSecs != timeParams.endSecs) {
         throw new UnsupportedOperationException("Range expression is not allowed in query_range")
       }
       // multiply by 1000 to convert unix timestamp in seconds to millis

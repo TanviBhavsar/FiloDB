@@ -3,23 +3,23 @@ package filodb.prometheus.ast
 import filodb.query.{MetadataQueryPlan, PeriodicSeriesPlan, _}
 
 sealed trait TimeRangeParams {
-  def start: Long   // in seconds sine Epoch
-  def end: Long
-  def step: Long
+  def startSecs: Long   // in seconds sine Epoch
+  def endSecs: Long
+  def stepSecs: Long
 }
 
 
 /**
  * NOTE: start and end are in SECONDS since Epoch
  */
-final case class TimeStepParams(start: Long, step: Long, end: Long) extends TimeRangeParams
-final case class InMemoryParam(step: Long) extends TimeRangeParams {
-  val start = 0L
-  val end = System.currentTimeMillis / 1000
+final case class TimeStepParams(startSecs: Long, stepSecs: Long, endSecs: Long) extends TimeRangeParams
+final case class InMemoryParam(stepSecs: Long) extends TimeRangeParams {
+  val startSecs = 0L
+  val endSecs = System.currentTimeMillis / 1000
 }
-final case class WriteBuffersParam(step: Long) extends TimeRangeParams {
-  val start = 0L
-  val end = System.currentTimeMillis / 1000
+final case class WriteBuffersParam(stepSecs: Long) extends TimeRangeParams {
+  val startSecs = 0L
+  val endSecs = System.currentTimeMillis / 1000
 }
 
 trait Base {

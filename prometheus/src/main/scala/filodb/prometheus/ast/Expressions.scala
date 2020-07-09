@@ -41,7 +41,7 @@ trait Expressions extends Aggregates with Functions {
     // scalastyle:off method.length
     override def toSeriesPlan(timeParams: TimeRangeParams): PeriodicSeriesPlan = {
       if (hasScalarResult(lhs) && hasScalarResult(rhs)) {
-        val rangeParams = RangeParams(timeParams.start, timeParams.step, timeParams.end)
+        val rangeParams = RangeParams(timeParams.startSecs, timeParams.stepSecs, timeParams.endSecs)
 
         (lhs, rhs) match {
           // 3 + 4
@@ -70,14 +70,14 @@ trait Expressions extends Aggregates with Functions {
           // 2 + http_requests
           case (lh: ScalarExpression, rh: PeriodicSeries) =>
             val scalar = ScalarFixedDoublePlan(lh.toScalar,
-              RangeParams(timeParams.start, timeParams.step, timeParams.end))
+              RangeParams(timeParams.startSecs, timeParams.stepSecs, timeParams.endSecs))
             val seriesPlan = rh.toSeriesPlan(timeParams)
             ScalarVectorBinaryOperation(operator.getPlanOperator, scalar, seriesPlan, scalarIsLhs = true)
 
           // http_requests + 2
           case (lh: PeriodicSeries, rh: ScalarExpression) =>
-            val scalar = ScalarFixedDoublePlan(rh.toScalar, RangeParams(timeParams.start, timeParams.step,
-              timeParams.end))
+            val scalar = ScalarFixedDoublePlan(rh.toScalar, RangeParams(timeParams.startSecs, timeParams.stepSecs,
+              timeParams.endSecs))
             val seriesPlan = lh.toSeriesPlan(timeParams)
             ScalarVectorBinaryOperation(operator.getPlanOperator, scalar, seriesPlan, scalarIsLhs = false)
 

@@ -1,8 +1,13 @@
 package filodb.prometheus.parse
 
-import scala.util.parsing.combinator.{JavaTokenParsers, PackratParsers, RegexParsers}
+//import filodb.core.query
+//import filodb.core.query.ColumnFilter
 
+import filodb.core.query.{ColumnFilter, Filter}
+
+import scala.util.parsing.combinator.{JavaTokenParsers, PackratParsers, RegexParsers}
 import filodb.prometheus.ast.{Expressions, TimeRangeParams, TimeStepParams}
+//import filodb.prometheus.parse.Parser.labelMatch
 import filodb.query._
 
 trait BaseParser extends Expressions with JavaTokenParsers with RegexParsers with PackratParsers {
@@ -71,6 +76,11 @@ trait Operator extends BaseParser {
 
   lazy val labelSelection: PackratParser[Seq[LabelMatch]] =
     "{" ~> repsep(labelMatch, ",") <~ "}" ^^ {
+      Seq() ++ _
+    }
+
+  lazy val labelValues: PackratParser[Seq[LabelMatch]] =
+    repsep(labelMatch, ",") ^^ {
       Seq() ++ _
     }
 
@@ -331,6 +341,18 @@ object Parser extends Expression {
     }
   }
 
+  private def parseLabelValueFilter(query: String): Seq[LabelMatch] = {
+    //val p = parseAll(expression, query)
+    println("query:" + query)
+    val p = parseAll(labelValues, query)
+    println("parsed query:" + p )
+    p match {
+      case s: Success[_] => s.get.asInstanceOf[Seq[LabelMatch]]
+      case e: Error => handleError(e, query)
+      case f: Failure => handleFailure(f, query)
+    }
+  }
+
   def parseFilter(query: String): InstantExpression = {
     parseAll(expression, query) match {
       case s: Success[_] => s.get match {
@@ -350,6 +372,23 @@ object Parser extends Expression {
       case _ => throw new UnsupportedOperationException()
     }
   }
+
+  def labelValuesQueryToLogicalPlan(labelNames: Seq[String], filterQuery: String,
+                                    timeParams: TimeRangeParams): LogicalPlan = {
+    val labelMatch = parseLabelValueFilter(filterQuery)
+
+    val columnFilters = labelMatch.map { l =>
+      l.labelMatchOp match {
+        case EqualMatch => ColumnFilter(l.label, Filter.Equals(l.value))
+        case NotRegexMatch => ColumnFilter(l.label, Filter.NotEqualsRegex(l.value))
+        case RegexMatch => ColumnFilter(l.label, Filter.EqualsRegex(l.value))
+        case NotEqual(false) => ColumnFilter(l.label, Filter.EqualsRegex(l.value))
+        case other: Any => throw new IllegalArgumentException(s"Unknown match operator $other")
+      }
+    }
+
+      LabelValues(labelNames, columnFilters, timeParams.startSecs * 1000, timeParams.endSecs * 1000)
+    }
 
   def queryToLogicalPlan(query: String, queryTimestamp: Long): LogicalPlan = {
     // step does not matter here in instant query - just use a dummy value more than minStep
@@ -417,5 +456,4 @@ object Parser extends Expression {
     val msg = "Cannot parse [" + input + "] because " + f.msg
     throw new IllegalArgumentException(msg)
   }
-
 }
