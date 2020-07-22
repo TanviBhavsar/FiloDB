@@ -13,7 +13,7 @@ import monix.reactive.Observable
 
 import filodb.coordinator.ShardMapper
 import filodb.core.GlobalConfig
-import filodb.core.metadata.{Column, Dataset, Schemas}
+import filodb.core.metadata.{Dataset, Schemas}
 import filodb.gateway.GatewayServer
 import filodb.gateway.conversion.{InputRecord, MetricTagInputRecord, PrometheusInputRecord}
 import filodb.memory.format.{vectors => bv, ZeroCopyUTF8String => ZCUTF8}
@@ -23,7 +23,7 @@ import filodb.memory.format.{vectors => bv, ZeroCopyUTF8String => ZCUTF8}
   * Please see GatewayServer for the app to run, or README for docs.
   */
 object TestTimeseriesProducer extends StrictLogging {
-  val dataset = Dataset("prometheus", Schemas.promCounter)
+  val dataset = Dataset("prometheus", Schemas.promHistogram)
 
   val oneBitMask = 0x1
   val twoBitMask = 0x3
@@ -135,12 +135,12 @@ object TestTimeseriesProducer extends StrictLogging {
                      "host"     -> s"H$host",
                      "instance" -> s"Instance-$instance")
 
-      PrometheusInputRecord(tags, "heap_usage", timestamp, value)
+      PrometheusInputRecord(tags, "test_gauge", timestamp, value)
     }
   }
 
   import ZCUTF8._
-  import Column.ColumnType._
+  //import Column.ColumnType._
 
   val dcUTF8 = "dc".utf8
   val wsUTF8 = "_ws_".utf8
@@ -157,7 +157,9 @@ object TestTimeseriesProducer extends StrictLogging {
    * the cardinality of time series for testing purposes.
    */
   def genHistogramData(startTime: Long, dataset: Dataset, numTimeSeries: Int = 16): Stream[InputRecord] = {
-    require(dataset.dataColumns.map(_.columnType) == Seq(TimestampColumn, LongColumn, LongColumn, HistogramColumn))
+
+    val dataset = Dataset("prometheus", Schemas.promHistogram)
+   // require(dataset.dataColumns.map(_.columnType) == Seq(TimestampColumn, LongColumn, LongColumn, HistogramColumn))
     val numBuckets = 10
 
     val histBucketScheme = bv.GeometricBuckets(2.0, 3.0, numBuckets)
@@ -180,8 +182,8 @@ object TestTimeseriesProducer extends StrictLogging {
 
       updateBuckets(n % numBuckets)
       val hist = bv.LongHistogram(histBucketScheme, buckets.map(x => x))
-      val count = util.Random.nextInt(100).toLong
-      val sum = buckets.sum
+      val count = util.Random.nextInt(100).toDouble
+      val sum = buckets.sum.toDouble
 
       val tags = Map(dcUTF8   -> s"DC$dc".utf8,
                      wsUTF8   -> "demo".utf8,
