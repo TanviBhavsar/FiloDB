@@ -1,7 +1,6 @@
 package filodb.query.exec
 
 import scala.concurrent.duration._
-
 import com.typesafe.config.ConfigFactory
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -9,12 +8,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-
 import filodb.core.{DatasetRef, QueryTimeoutException, TestData, Types}
 import filodb.core.binaryrecord2.RecordBuilder
 import filodb.core.memstore.{FixedMaxPartitionsEvictionPolicy, SchemaMismatch, SomeData, TimeSeriesMemStore}
 import filodb.core.metadata.Column.ColumnType.{DoubleColumn, HistogramColumn, LongColumn, TimestampColumn}
 import filodb.core.metadata.Schemas
+//import filodb.core.metadata.Schemas.hubble
 import filodb.core.query._
 import filodb.core.store.{AllChunkScan, InMemoryMetaStore, NullColumnStore, TimeRangeChunkScan}
 import filodb.memory.MemFactory
@@ -63,6 +62,9 @@ class MultiSchemaPartitionsExecSpec extends AnyFunSpec with Matchers with ScalaF
                         Map(promCounter.name -> promCounter,
                             "histogram" -> MMD.histDataset.schema,
                             Schemas.dsGauge.name -> Schemas.dsGauge))
+
+//  val schemas1 = Schemas(hubble.partition,
+//    Map(hubble.name -> hubble))
 
   // NOTE: due to max-chunk-size in storeConf = 100, this will make (numRawSamples / 100) chunks
   // Be sure to reset the builder; it is in an Object so static and shared amongst tests

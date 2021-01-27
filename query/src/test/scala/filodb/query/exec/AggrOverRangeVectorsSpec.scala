@@ -22,6 +22,9 @@ class AggrOverRangeVectorsSpec extends RawDataWindowingSpec with ScalaFutures {
 
   val tvSchema = ResultSchema(Seq(ColumnInfo("timestamp", ColumnType.TimestampColumn),
                                   ColumnInfo("value", ColumnType.DoubleColumn)), 1)
+
+  val tvSchema1= ResultSchema(Seq(ColumnInfo("timestamp", ColumnType.TimestampColumn),
+    ColumnInfo("value", ColumnType.DoubleColumn)), 1)
   val histSchema = ResultSchema(MMD.histDataset.schema.infosFromIDs(Seq(0, 3)), 1)
   val histMaxSchema = ResultSchema(MMD.histMaxDS.schema.infosFromIDs(Seq(0, 4, 3)), 1, colIDs = Seq(0, 4, 3))
 
@@ -303,6 +306,14 @@ class AggrOverRangeVectorsSpec extends RawDataWindowingSpec with ScalaFutures {
   }
 
   private def toRv(samples: Seq[(Long, Double)], rangeVectorKey: RangeVectorKey = ignoreKey): RangeVector = {
+    new RangeVector {
+      import NoCloseCursor._
+      override def key: RangeVectorKey = rangeVectorKey
+      override def rows(): RangeVectorCursor = samples.map(r => new TransientRow(r._1, r._2)).iterator
+    }
+  }
+
+  private def toRv1(samples: Seq[(Long, Double)], rangeVectorKey: RangeVectorKey = ignoreKey): RangeVector = {
     new RangeVector {
       import NoCloseCursor._
       override def key: RangeVectorKey = rangeVectorKey
