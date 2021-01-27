@@ -1,39 +1,47 @@
 package filodb.downsampler
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
+import java.math.BigInteger
+import java.nio.charset.StandardCharsets
+import java.util
+
+import filodb.core.GlobalConfig.systemConfig
+import org.json4s.jackson.Serialization
+
+import scala.io.Source
+//import java.math.BigInteger
 import java.time.Instant
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
-
 import com.typesafe.config.{ConfigException, ConfigFactory}
-import monix.execution.Scheduler
-import monix.reactive.Observable
-import org.apache.spark.{SparkConf, SparkException}
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Seconds, Span}
-
 import filodb.cardbuster.CardinalityBuster
 import filodb.core.GlobalScheduler._
 import filodb.core.MachineMetricsData
 import filodb.core.binaryrecord2.{BinaryRecordRowReader, RecordBuilder, RecordSchema}
 import filodb.core.downsample.{DownsampledTimeSeriesStore, OffHeapMemory}
-import filodb.core.memstore.{PagedReadablePartition, TimeSeriesPartition}
 import filodb.core.memstore.FiloSchedulers.QuerySchedName
+import filodb.core.memstore.{PagedReadablePartition, TimeSeriesPartition}
 import filodb.core.metadata.{Dataset, Schemas}
-import filodb.core.query._
 import filodb.core.query.Filter.Equals
+import filodb.core.query._
 import filodb.core.store.{AllChunkScan, PartKeyRecord, SinglePartitionScan, StoreConfig}
 import filodb.downsampler.chunk.{BatchDownsampler, Downsampler, DownsamplerSettings}
 import filodb.downsampler.index.{DSIndexJobSettings, IndexJobDriver}
-import filodb.memory.format.{PrimitiveVectorReader, UnsafeUtils}
 import filodb.memory.format.ZeroCopyUTF8String._
 import filodb.memory.format.vectors.{CustomBuckets, LongHistogram}
+import filodb.memory.format.{PrimitiveVectorReader, UnsafeUtils}
 import filodb.query.QueryResult
 import filodb.query.exec.{InProcessPlanDispatcher, MultiSchemaPartitionsExec}
+import monix.execution.Scheduler
+import monix.reactive.Observable
+import org.apache.spark.{SparkConf, SparkException}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 /**
   * Spec tests downsampling round trip.
@@ -99,6 +107,65 @@ class DownsamplerMainSpec extends AnyFunSpec with Matchers with BeforeAndAfterAl
   override def afterAll(): Unit = {
     offheapMem.free()
   }
+
+
+  it("test") {
+    // val brHex = "0x9e0100009808120000002e00000039ae758e1a006e6f64655f66696c6573797374656d5f73697a655f62797465737201c10a0075732d656173742d3161085f736f757263655f06006d6f73616963065f737465705f02003630c00e006163692d6b756265726e6574657308617263687479706504006b75626507636c75737465720a0075732d656173742d31610a6461746163656e74657206006d616964656e0664657669636504006e73667308656e64706f696e740c00687474702d6d6574726963730666737479706504006e736673c4130031302e3139312e3135332e3134323a39313030c711006170632d6e6f64652d6578706f727465720a6d6f756e74706f696e7437002f72756e2f6e65746e732f636e69746573742d61353330363063632d323964342d633265302d323332642d366264353838613864613337096e616d6573706163650e006170632d70726f6d657468657573046e6f64653100706f72742d2d31303236302e6b6e6f6465323730312e757375716f3238612e6b6b2e636c6f75642e6170706c652e636f6d077365727669636507006b7562656c6574"
+    //val brHex = "0x2c0000000f1712000000200000004b8b36940c006d794d65747269634e616d650e00c104006d794e73c004006d795773"
+    val brHex ="0xc90200009808120000001b000000937583d6070047617567653136b002c10e00436172642d316b2d4d43502d3537065f737465705f02003130c00d006163692d74656c656d65747279c4240031623563303762302d393031312d343333352d383262632d3834383562336336306532372f6d6f736169635f6d6574726f5f6163695f74656c656d657472795f636c75737465725f696e736964655f6170706c6534006d6f736169635f6d6574726f5f6163695f74656c656d657472795f636c75737465725f696e736964655f6170706c652d56616c37236d6f736169635f6d6574726f5f6461746163657465725f696e736964655f6170706c6528006d6f736169635f6d6574726f5f6461746163657465725f696e736964655f6170706c652d56616c37326d6f736169635f6d6574726f5f686f73746e616d655f6170706c655f6461746163657465725f696e736964655f6170706c6537006d6f736169635f6d6574726f5f686f73746e616d655f6170706c655f6461746163657465725f696e736964655f6170706c652d56616c372f6d6f736169635f6d6574726f5f696e7374616e63655f73686f72747461736b5f69645f696e736964655f6170706c6535006d6f736169635f6d6574726f5f696e7374616e63655f73686f72747461736b5f69645f696e736964655f6170706c652d56616c3537236d6f736169635f6d6574726f5f6f7065726174696f6e5f696e736964655f6170706c6528006d6f736169635f6d6574726f5f6f7065726174696f6e5f696e736964655f6170706c652d56616c32236d6f736169635f6d6574726f5f706172746974696f6e5f696e736964655f6170706c6528006d6f736169635f6d6574726f5f706172746974696f6e5f696e736964655f6170706c652d56616c37196d6f736169635f6d6574726f5f736572766963655f6e616d651e006d6f736169635f6d6574726f5f736572766963655f6e616d652d56616c31"
+    val dirName = "/Users/tanvibhavsar/Downloads/MosaicPerf/partKeysPerf1/"
+
+    val file = new File("decodedPartKeys2")
+    val bw = new BufferedWriter(new FileWriter(file))
+    new java.io.File(dirName).listFiles.foreach { filename =>
+      println("filename:" +filename)
+      for (brHex <- Source.fromFile(filename).getLines) {
+       // println(brHex)
+
+        val brHex2 = if (brHex.startsWith("0x")) brHex.substring(2) else brHex
+        val config = systemConfig.getConfig("filodb")
+        val biBytes = new BigInteger("10" + brHex2, 16).toByteArray
+        val pkBytes = util.Arrays.copyOfRange(biBytes, 1, biBytes.length)
+        val partSchema = Schemas.fromConfig(config).get.part
+        // println("decoded value:" + partSchema.binSchema.toStringPairs(pkBytes, UnsafeUtils.arayOffset).toMap.values.toList)
+        import org.json4s._
+        implicit val formats = Serialization.formats(NoTypeHints)
+        val decodedString = partSchema.binSchema.toStringPairs(pkBytes, UnsafeUtils.arayOffset).toMap
+        val res = Serialization.write(decodedString)
+        bw.write(res)
+        bw.newLine()
+        //println("res:" + res)
+      }
+    }
+    bw.close()
+  }
+
+//    it("test2") {
+//       val brHex = "0x9e0100009808120000002e00000039ae758e1a006e6f64655f66696c6573797374656d5f73697a655f62797465737201c10a0075732d656173742d3161085f736f757263655f06006d6f73616963065f737465705f02003630c00e006163692d6b756265726e6574657308617263687479706504006b75626507636c75737465720a0075732d656173742d31610a6461746163656e74657206006d616964656e0664657669636504006e73667308656e64706f696e740c00687474702d6d6574726963730666737479706504006e736673c4130031302e3139312e3135332e3134323a39313030c711006170632d6e6f64652d6578706f727465720a6d6f756e74706f696e7437002f72756e2f6e65746e732f636e69746573742d61353330363063632d323964342d633265302d323332642d366264353838613864613337096e616d6573706163650e006170632d70726f6d657468657573046e6f64653100706f72742d2d31303236302e6b6e6f6465323730312e757375716f3238612e6b6b2e636c6f75642e6170706c652e636f6d077365727669636507006b7562656c6574"
+//      //val brHex = "0x2c0000000f1712000000200000004b8b36940c006d794d65747269634e616d650e00c104006d794e73c004006d795773"
+//
+//        val brHex2 = if (brHex.startsWith("0x")) brHex.substring(2) else brHex
+//        val config = systemConfig.getConfig("filodb")
+//        val array = new BigInteger(brHex2, 16).toByteArray
+//        val schema = Schemas.fromConfig(config).get.schemas.head._2
+//        val decoded = schema.partKeySchema.stringify(array)
+//      //schema.partKeySchema.
+//        //if (decoded.contains())
+//        println("decoded value:" + decoded)
+//
+//      }
+
+//    val brHex2 = if (brHex.startsWith("0x")) brHex.substring(2) else brHex
+//    val array = new BigInteger(brHex2, 16).toByteArray
+//    val config = systemConfig.getConfig("filodb")
+//    //val schema = Schemas.fromConfig(config).get
+//    val schema = Schemas.fromConfig(config).get.schemas.head._2
+//    //val schema = Schemas.gauge
+//    println("decoded value:" + schema.partKeySchema.stringify(array))
+
+//   // val strPairs = schema.part.binSchema.toStringPairs(array, UnsafeUtils.arayOffset)
+//
+//    println("strPairs of prod data:" + strPairs)
 
   it ("should write untyped data to cassandra") {
 
@@ -183,6 +250,20 @@ class DownsamplerMainSpec extends AnyFunSpec with Matchers with BeforeAndAfterAl
 
     rawColStore.write(rawDataset.ref, Observable.fromIterator(chunks)).futureValue
     val pk = PartKeyRecord(gaugePartKeyBytes, 74372801000L, 74373042000L, Some(150))
+
+    println("gaugePartKeyBytes:" + gaugePartKeyBytes)
+    println("gaugePartKeyBytes string:" + new String(gaugePartKeyBytes, StandardCharsets.UTF_8))
+    val brHex = gaugePartKeyBytes
+    val brHex2 = if (brHex.startsWith("0x")) brHex.slice(2, brHex.length) else brHex
+    //val array = new BigInteger(brHex2, 16).toByteArray
+    val config = systemConfig.getConfig("filodb")
+    val schema = Schemas.fromConfig(config).get.schemas.head._2
+    //val schema = Schemas.gauge
+
+    val strPairs =  batchDownsampler.schemas.part.binSchema.toStringPairs(gaugePartKeyBytes, UnsafeUtils.arayOffset)
+
+   println("strPairs of gaugePartKeyBytes:" + strPairs)
+    println("decoded value:" + schema.partKeySchema.stringify(brHex2))
     rawColStore.writePartKeys(rawDataset.ref, 0, Observable.now(pk), 259200, pkUpdateHour).futureValue
   }
 
