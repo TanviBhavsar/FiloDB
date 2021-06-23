@@ -132,11 +132,31 @@ object Parser extends StrictLogging {
     queryRangeToLogicalPlan(query, defaultQueryParams)
   }
 
-  def queryRangeToLogicalPlan(query: String, timeParams: TimeRangeParams): LogicalPlan = {
-    parseQueryWithPrecedence(query) match {
+  def queryToExpression(query: String): Expression = {
+    parseQueryWithPrecedence(query)
+  }
+
+  //TO DO for instant queries
+  def expressionToLogicalPlan(expression: Expression, timeParams: TimeRangeParams): LogicalPlan = {
+    expression match {
       case p: PeriodicSeries => p.toSeriesPlan(timeParams)
       case r: SimpleSeries   => r.toSeriesPlan(timeParams, isRoot = true)
       case _ => throw new UnsupportedOperationException()
+    }
+  }
+
+  def queryRangeToLogicalPlan(query: String, timeParams: TimeRangeParams): LogicalPlan = {
+
+expressionToLogicalPlan(queryToExpression(query), timeParams)
+
+  }
+
+  def removeSumFromExpression(expression: Expression): Expression = {
+    expression match {
+      case i: InstantExpression => i.copy(metricName = i.metricName.map(_.replace("_sum", "")))
+      case a: AggregateExpression => a.copy(params = a.params.map(removeSumFromExpression(_)))
+      // To DO hanle othercases
+      case _ => expression
     }
   }
 }

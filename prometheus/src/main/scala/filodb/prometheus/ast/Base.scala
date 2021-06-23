@@ -22,7 +22,13 @@ final case class WriteBuffersParam(step: Long) extends TimeRangeParams {
   val end = System.currentTimeMillis / 1000
 }
 
-trait Expression
+trait Expression {
+  def isHistogramQuery(query: String): Boolean = {
+    if (query.contains("_sum") || query.contains("_count") || query.contains("_buckets") || query.contains("_bucket"))
+      true
+    else false
+  }
+}
 
 trait Series
 
