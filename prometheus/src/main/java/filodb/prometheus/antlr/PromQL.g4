@@ -29,7 +29,6 @@ powOp:       POW;
 multOp:      MUL | DIV | MOD;
 addOp:       ADD | SUB;
 compareOp:   (DEQ | NE | GT | LT | GE | LE) BOOL?;
-andUnlessOp: AND | UNLESS;
 orOp:        OR;
 
 vector
